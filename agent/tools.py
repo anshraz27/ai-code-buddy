@@ -1,8 +1,11 @@
+
 import pathlib
 import subprocess
 from typing import Tuple
+import requests
 
 from langchain_core.tools import tool
+from duckduckgo_search import DDGS
 
 PROJECT_ROOT = pathlib.Path.cwd() / "generated_project"
 
@@ -60,3 +63,11 @@ def run_cmd(cmd: str, cwd: str = None, timeout: int = 30) -> Tuple[int, str, str
 def init_project_root():
     PROJECT_ROOT.mkdir(parents=True, exist_ok=True)
     return str(PROJECT_ROOT)
+
+
+@tool
+def web_search(query: str, max_results: int = 5) -> str:
+    """Searches DuckDuckGo for latest tech updates."""
+    results = DDGS().text(query, max_results=max_results)
+    formatted = [f"{r['title']}: {r['href']}" for r in results]
+    return "\n".join(formatted)

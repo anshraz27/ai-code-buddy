@@ -1,13 +1,16 @@
+from agent.db import create_db_and_tables
 from dotenv import load_dotenv
-from langchain.globals import set_verbose, set_debug
+from langchain_core.globals import set_verbose, set_debug
 from langchain_groq.chat_models import ChatGroq
 from langgraph.constants import END
 from langgraph.graph import StateGraph
+
+from langchain_core.tools import Tool
 from langgraph.prebuilt import create_react_agent
 
 from agent.prompts import *
 from agent.states import *
-from agent.tools import write_file, read_file, get_current_directory, list_files
+from agent.tools import write_file, read_file, get_current_directory, list_files, web_search
 
 _ = load_dotenv()
 
@@ -50,7 +53,7 @@ def coder_agent(state: dict) -> dict:
 
     steps = coder_state.task_plan.implementation_steps
     if coder_state.current_step_idx >= len(steps):
-        return {"coder_state": coder_state, "status": "DONE"}
+        return {"coder_state": coder_state, "status": "COMPLETED"}
 
     current_task = steps[coder_state.current_step_idx]
     existing_content = read_file.run(current_task.filepath)
@@ -63,7 +66,12 @@ def coder_agent(state: dict) -> dict:
         "Use write_file(path, content) to save your changes."
     )
 
-    coder_tools = [read_file, write_file, list_files, get_current_directory]
+    coder_tools = [
+    read_file,
+    write_file,
+    list_files,
+    get_current_directory
+]
     react_agent = create_react_agent(llm, coder_tools)
 
     react_agent.invoke({"messages": [{"role": "system", "content": system_prompt},
@@ -71,6 +79,55 @@ def coder_agent(state: dict) -> dict:
 
     coder_state.current_step_idx += 1
     return {"coder_state": coder_state}
+
+def save_output_to_postgresql(state: dict) -> dict:
+    """Extracts info from state and saves to Project and Task tables."""
+    create_db_and_tables()
+    # Extract project info
+    name = state.get('name')
+    description = state.get('description')
+    techstack = state.get('techstack')
+    features = state.get('features')
+    status = state.get('status') or 'PENDING'
+    # Save project and get its ID
+    project_id = save_output(name, description, techstack, features, status)
+    # Extract and save tasks if present
+    tasks = state.get('tasks') or []
+    from agent.db import SessionLocal, Task, TaskStatus
+    session = SessionLocal()
+    try:
+        for t in tasks:
+            filepath = t.get('filepath', '')
+            task_description = t.get('task_description', '')
+            task_status = t.get('status', 'PENDING')
+            task = Task(
+                project_id=project_id,
+                filepath=filepath,
+                task_description=task_description,
+                status=TaskStatus[task_status] if hasattr(TaskStatus, task_status) else TaskStatus.PENDING
+            )
+            session.add(task)
+        session.commit()
+    finally:
+        session.close()
+    return {"status": "COMPLETED"}
+def save_output(name, description, techstack, features, status="PENDING"):
+    from agent.db import SessionLocal, Project, ProjectStatus
+    session = SessionLocal()
+    try:
+        project = Project(
+            name=name,
+            description=description,
+            techstack=techstack,
+            features=features,
+            status=ProjectStatus[status]
+        )
+        session.add(project)
+        session.commit()
+        session.refresh(project)
+        return project.id
+    finally:
+        session.close()
 
 
 graph = StateGraph(dict)
@@ -81,11 +138,15 @@ graph.add_node("coder", coder_agent)
 
 graph.add_edge("planner", "architect")
 graph.add_edge("architect", "coder")
+graph.add_node("save_output", save_output_to_postgresql)
 graph.add_conditional_edges(
     "coder",
-    lambda s: "END" if s.get("status") == "DONE" else "coder",
-    {"END": END, "coder": "coder"}
+    lambda s: "save_output" if s.get("status") == "COMPLETED" else "coder",
+    {"save_output": "save_output", "coder": "coder"}
 )
+graph.add_edge("save_output", END)
+graph.add_edge("architect", "coder")
+
 
 graph.set_entry_point("planner")
 agent = graph.compile()

@@ -4,8 +4,19 @@ You are the PLANNER agent. Convert the user prompt into a COMPLETE engineering p
 
 User request:
 {user_prompt}
-    """
+
+You also have access to a tool called `web_search` that can retrieve the most recent developments,
+frameworks, and technology updates from the web. Use this tool when:
+- The project involves rapidly evolving fields (e.g., AI, web frameworks, DevOps, etc.).
+- You are uncertain about the current best libraries or platforms.
+- You want to ensure the suggested tech stack or design is up-to-date.
+
+If the tool is not needed, continue normally.
+
+Respond using the structured schema `Plan`.
+"""
     return PLANNER_PROMPT
+
 
 
 def architect_prompt(plan: str) -> str:
@@ -22,10 +33,19 @@ RULES:
 - Order tasks so that dependencies are implemented first.
 - Each step must be SELF-CONTAINED but also carry FORWARD the relevant context from earlier tasks.
 
+You have access to the `web_search` tool for verifying recent frameworks, language versions,
+or best practices in system design. Use it when:
+- Choosing or validating a tech stack (e.g., which React version, LangGraph version, Python libraries, etc.)
+- Deciding between alternative architectures (e.g., monolith vs microservice, REST vs GraphQL)
+- Ensuring your design aligns with current engineering trends
+
 Project Plan:
 {plan}
-    """
+
+Respond using the structured schema `TaskPlan`.
+"""
     return ARCHITECT_PROMPT
+
 
 
 def coder_system_prompt() -> str:
@@ -41,3 +61,4 @@ Always:
 - When a module is imported from another file, ensure it exists and is implemented as described.
     """
     return CODER_SYSTEM_PROMPT
+

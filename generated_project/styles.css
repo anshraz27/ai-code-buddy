@@ -1,0 +1,70 @@
+/*
+ * styles.css
+ *
+ * Stylesheet for the Hello World page.
+ * Implements a CSS reset, root variables, global styles, a flexbox
+ * container for centering, and responsive heading typography.
+ */
+
+/* ---------------------------------------------------------------
+ * CSS Reset (box-sizing) and basic element normalization
+ * --------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------------------------------------------------------------
+ * Root variables and base font
+ * --------------------------------------------------------------- */
+:root {
+  /* Primary color used for headings and accents */
+  --primary-color: #007bff; /* Adjust as needed */
+  /* Background color for the page */
+  --bg-color: #f5f5f5; /* Light background */
+  /* Font family for the document */
+  --font-family: Arial, sans-serif;
+}
+
+/* ---------------------------------------------------------------
+ * Global html, body rules
+ * --------------------------------------------------------------- */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background-color: var(--bg-color);
+  font-family: var(--font-family);
+}
+
+/* ---------------------------------------------------------------
+ * Layout – Flexbox container to center content
+ * --------------------------------------------------------------- */
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Full viewport height */
+}
+
+/* ---------------------------------------------------------------
+ * Heading style – inside the flex container
+ * --------------------------------------------------------------- */
+.container h1 {
+  color: var(--primary-color);
+  font-family: var(--font-family);
+  font-size: 2.5rem;
+  font-weight: 300; /* Light weight */
+}
+
+/* ---------------------------------------------------------------
+ * Responsive adjustments for smaller screens
+ * --------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .container h1 {
+    font-size: 1.8rem;
+  }
+}
